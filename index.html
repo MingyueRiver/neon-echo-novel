@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>霓虹回响：零号协议 | Neon Echo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+SC:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #39ff14;
+            --neon-red: #ff003c;
+            --bg-dark: #050505;
+            --panel-bg: rgba(10, 15, 20, 0.90);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--neon-blue);
+            font-family: 'Share Tech Mono', 'Noto Sans SC', monospace;
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* CRT Scanline Effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+            animation: scanlineMove 0.8s linear infinite;
+        }
+        
+        .scanlines::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.4) 100%);
+            pointer-events: none;
+        }
+
+        /* Animations */
+        @keyframes scanlineMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 4px; }
+        }
+
+        @keyframes glitch-anim-1 {
+            0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+            20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+            40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+            60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+            80% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 1px); }
+            100% { clip-path: inset(30% 0 40% 0); transform: translate(1px, -1px); }
+        }
+
+        /* UI Elements */
+        .terminal-box {
+            background: var(--panel-bg);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
+            backdrop-filter: blur(4px);
+            position: relative;
+        }
+
+        .terminal-box::before {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px; right: -2px; bottom: -2px;
+            background: linear-gradient(45deg, var(--neon-blue), transparent, var(--neon-pink));
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cyber-btn:hover:not(:disabled) {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .cyber-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .cyber-btn:disabled {
+            border-color: #333;
+            color: #555;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .cyber-btn.danger {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+        .cyber-btn.danger:hover:not(:disabled) {
+            background: var(--neon-pink);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+        
+        .cyber-btn.special {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+        .cyber-btn.special:hover:not(:disabled) {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+
+        .glitch-text {
+            position: relative;
+        }
+        
+        .glitch-text:hover::before {
+            content: attr(data-text);
+            position: absolute;
+            left: 2px;
+            text-shadow: -1px 0 var(--neon-pink);
+            background: var(--bg-dark);
+            overflow: hidden;
+            clip-path: inset(0 0 0 0);
+            animation: glitch-anim-1 2s infinite linear alternate-reverse;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--neon-blue);
+            border-radius: 2px;
+        }
+
+        /* Typing Cursor */
+        .cursor::after {
+            content: '█';
+            animation: blink 1s infinite;
+            margin-left: 4px;
+            color: var(--neon-green);
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        #canvas-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .stat-bar-fill {
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .inventory-item {
+            border-left: 2px solid var(--neon-green);
+            padding-left: 8px;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body class="flex flex-col h-screen text-sm md:text-base selection:bg-cyan-500 selection:text-black">
+
+    <!-- CRT Overlay -->
+    <div class="scanlines"></div>
+    <canvas id="canvas-bg"></canvas>
+
+    <!-- Header / HUD -->
+    <header class="p-3 md:p-4 border-b border-cyan-900 bg-black/90 backdrop-blur z-10 flex justify-between items-center shrink-0 shadow-lg shadow-cyan-900/20">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl md:text-2xl font-bold glitch-text text-cyan-400 tracking-tighter" data-text="NEON ECHO">NEON ECHO <span class="text-xs align-top opacity-70 text-white ml-2">Protocol: ZERO</span></h1>
+        </div>
+        
+        <!-- Stats -->
+        <div class="flex gap-4 md:gap-8 text-xs md:text-sm">
+            <div class="flex flex-col w-24 md:w-32">
+                <div class="flex justify-between mb-1">
+                    <span class="text-pink-500 font-bold tracking-wider">HP</span>
+                    <span id="hp-val" class="text-pink-400">100%</span>
+                </div>
+                <div class="h-1 bg-gray-900 w-full relative overflow-hidden">
+                    <div id="hp-bar" class="h-full bg-pink-500 stat-bar-fill" style="width: 100%; box-shadow: 0 0 8px #ff00ff;"></div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col w-24 md:w-32">
+                <div class="flex justify-between mb-1">
+                    <span class="text-cyan-400 font-bold tracking-wider">SAN</span>
+                    <span id="san-val" class="text-cyan-300">100%</span>
+                </div>
+                <div class="h-1 bg-gray-900 w-full relative overflow-hidden">
+                    <div id="san-bar" class="h-full bg-cyan-400 stat-bar-fill" style="width: 100%; box-shadow: 0 0 8px #00f3ff;"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative z-10 p-2 md:p-6 gap-4 max-w-7xl mx-auto w-full">
+        
+        <!-- Story Text Log -->
+        <section id="story-container" class="flex-1 terminal-box p-4 md:p-8 overflow-y-auto flex flex-col gap-4 shadow-lg min-h-[50vh]">
+            <div id="story-log" class="space-y-4 pb-4">
+                <!-- Text will be injected here -->
+            </div>
+            <!-- Invisible element to scroll to -->
+            <div id="scroll-anchor" class="h-px w-full"></div>
+        </section>
+
+        <!-- Sidebar: Inventory & Data -->
+        <aside class="w-full md:w-72 terminal-box p-5 flex flex-col gap-4 shrink-0 h-auto md:h-auto min-h-[150px]">
+            <div>
+                <h3 class="border-b border-gray-700 pb-2 text-green-400 font-bold tracking-widest text-xs mb-3">INVENTORY // 物品栏</h3>
+                <ul id="inventory-list" class="space-y-2 text-xs text-gray-300">
+                    <li class="italic opacity-50 pl-2">-- 空 --</li>
+                </ul>
+            </div>
+            
+            <div class="mt-auto border-t border-gray-700 pt-4">
+                 <h3 class="text-xs text-gray-500 mb-1 tracking-widest">SYSTEM STATUS</h3>
+                 <div id="location-text" class="text-cyan-300 font-mono text-sm tracking-tight">SYSTEM BOOT...</div>
+                 <div class="text-[10px] text-gray-600 mt-2 font-mono">ID: UNKNOWN<br>Cycle: 2077-A9</div>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Control Panel -->
+    <footer class="p-4 bg-black/95 border-t border-cyan-900 z-20 shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
+        <div id="choices-container" class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button id="start-btn" class="cyber-btn p-4 text-center justify-center font-bold text-lg col-span-1 md:col-span-2 group">
+                <span class="group-hover:animate-pulse">INITIALIZE NEURAL LINK // 启动神经连接</span>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Audio toggle -->
+    <div class="fixed bottom-3 right-3 z-50 opacity-60 hover:opacity-100 transition-opacity">
+        <button id="mute-btn" class="text-[10px] text-cyan-800 border border-cyan-900 px-2 py-1 bg-black hover:bg-cyan-900/20 transition-colors">AUDIO: ON</button>
+    </div>
+
+    <script>
+        /**
+         * AUDIO ENGINE
+         */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let isMuted = false;
+
+        const SoundFX = {
+            playTone: (freq, type, duration, vol = 0.1) => {
+                if (isMuted) return;
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            },
+            
+            typeChar: () => {
+                // High pitched random blip for typing
+                if(Math.random() > 0.7) return; // Don't beep every char
+                const freq = 800 + Math.random() * 200;
+                SoundFX.playTone(freq, 'square', 0.03, 0.015);
+            },
+            
+            hover: () => {
+                SoundFX.playTone(200, 'sine', 0.1, 0.03);
+            },
+            
+            click: () => {
+                SoundFX.playTone(600, 'sawtooth', 0.1, 0.08);
+                setTimeout(() => SoundFX.playTone(300, 'square', 0.2, 0.05), 80);
+            },
+            
+            glitch: () => {
+                for(let i=0; i<6; i++) {
+                    setTimeout(() => {
+                        SoundFX.playTone(100 + Math.random()*800, 'sawtooth', 0.05, 0.08);
+                    }, i * 40);
+                }
+            },
+
+            loot: () => {
+                 SoundFX.playTone(1200, 'sine', 0.1, 0.1);
+                 setTimeout(() => SoundFX.playTone(1800, 'sine', 0.3, 0.1), 100);
+            },
+
+            danger: () => {
+                 SoundFX.playTone(100, 'sawtooth', 0.5, 0.2);
+            }
+        };
+
+        document.getElementById('mute-btn').addEventListener('click', (e) => {
+            isMuted = !isMuted;
+            e.target.innerText = isMuted ? "AUDIO: OFF" : "AUDIO: ON";
+        });
+
+        /**
+         * GAME STATE
+         */
+        const gameState = {
+            hp: 100,
+            san: 100,
+            inventory: [],
+            flags: {},
+            currentScene: null
+        };
+
+        /**
+         * STORY DATABASE
+         */
+        const story = {
+            "start": {
+                text: [
+                    "系统自检完成... 神经接口校准中...",
+                    "生物特征识别：失败。记忆扇区：受损。", 
+                    "位置：新九州第4区，雨巷。",
+                    "你在一阵刺骨的寒意中醒来。酸雨打在积水的地面上，全息霓虹广告牌的倒影被雨水击碎，闪烁着粉色和蓝色的噪点。",
+                    "你的左臂——一条老旧的军用级『狂战士』型号义肢——正在发出轻微的嗡嗡声，提示能量过低 (5%)。",
+                    "口袋里沉甸甸的，似乎有一块未加密的数据盘。你的直觉告诉你，这东西比你的命还值钱。"
+                ],
+                location: "新九州 / 第4区 / 雨巷",
+                choices: [
+                    { text: "检查神秘数据盘", next: "check_disk", effect: "san-5", type: "special" },
+                    { text: "观察周围环境", next: "look_around" }
+                ]
+            },
+            "check_disk": {
+                text: [
+                    "你颤抖着手指将数据盘插入义眼的读取槽。",
+                    "一阵剧烈的头痛袭来，仿佛有人将烧红的铁条插入了你的脑皮层。",
+                    "视网膜上闪过无数破碎的代码片段...",
+                    "警告：检测到『荒坂』级别的神经毒素追踪程序。",
+                    "你只看到了一个被加密层层包裹的文件名：『零号协议 (PROJECT ZERO)』。"
+                ],
+                location: "新九州 / 精神网络",
+                choices: [
+                    { text: "强制断开连接", next: "disconnect_force", effect: "hp-15" },
+                    { text: "尝试解析追踪源", next: "trace_source", req: { stat: "san", val: 80 }, type: "special" }
+                ]
+            },
+            "trace_source": {
+                text: [
+                    "你咬紧牙关，利用义肢辅助处理器的剩余算力进行反向追踪。",
+                    "代码流在你的视野中构建成一座金色的数字高塔。",
+                    "你看到了源头——不是荒坂，而是『世界树公司』(Yggdrasil Corp)。",
+                    "在追踪程序锁定你之前，你成功下载了一个后门密钥。",
+                    "获得物品：【世界树后门密钥】"
+                ],
+                location: "网络空间 / 深层",
+                choices: [
+                    { text: "断开连接并喘息", next: "disconnect_safe", loot: "世界树后门密钥" }
+                ]
+            },
+            "disconnect_force": {
+                text: [
+                    "你猛地拔出数据盘。视线因为剧痛而短暂模糊，鼻血滴落在积水中。",
+                    "虽然受了点伤，但追踪程序似乎没能锁定你的精确位置。",
+                    "你必须离开这里，那些『清道夫』无人机很快就会嗅着数据流赶来。"
+                ],
+                location: "新九州 / 第4区 / 雨巷",
+                choices: [
+                    { text: "前往地下街区", next: "underground" },
+                    { text: "混入主街的人群", next: "main_street" }
+                ]
+            },
+            "disconnect_safe": {
+                text: [
+                    "你优雅地退出了网络，就像一个幽灵。",
+                    "你不仅保住了理智，还拿到了一张底牌。",
+                    "但这里依然不安全，远处的警笛声正在逼近。"
+                ],
+                location: "新九州 / 第4区 / 雨巷",
+                choices: [
+                    { text: "前往地下街区", next: "underground" },
+                    { text: "混入主街的人群", next: "main_street" }
+                ]
+            },
+            "look_around": {
+                text: [
+                    "雨水顺着生锈的排气管滴落，发出单调的节奏声。",
+                    "巷口停着一辆浮空警车，红蓝光芒无声地旋转，正在扫描过路行人的面部ID。",
+                    "你注意到垃圾堆旁躺着一个报废的『守护者』型机器人，它的胸口核心还在微弱地发光。",
+                    "这是一个补充义肢能量的机会，但也可能触发它的自毁程序。"
+                ],
+                location: "新九州 / 第4区 / 巷道",
+                choices: [
+                    { text: "盗取机器人核心", next: "steal_core", effect: "hp+30", type: "danger" },
+                    { text: "太冒险了，悄悄离开", next: "leave_quietly" }
+                ]
+            },
+            "steal_core": {
+                text: [
+                    "你撬开了机器人的胸甲。核心液像发光的蓝色血液一样流出。",
+                    "连接成功。能量激增，你的义肢发出满负荷的咆哮。",
+                    "【警告】非法接入检测！",
+                    "机器人的备用电源启动了警报，巷口的浮空车立刻转向了你。",
+                    "一个武装无人机正从车顶升起。"
+                ],
+                choices: [
+                    { text: "正面战斗", next: "combat_drone", type: "danger" },
+                    { text: "发动过载奔跑", next: "run_overload", effect: "hp-10" }
+                ]
+            },
+            "combat_drone": {
+                text: [
+                    "你利用充盈的能量，义肢化作利刃，迎着无人机的机枪火力冲了上去。",
+                    "子弹擦过你的脸颊（HP-20），但你一拳击穿了无人机的推进器。",
+                    "无人机坠毁在积水中，炸出一团火花。",
+                    "你在残骸中发现了一个还能用的【EMP手雷】。"
+                ],
+                choices: [
+                    { text: "拿走手雷并撤离", next: "main_street", loot: "EMP手雷", effect: "hp-20" }
+                ]
+            },
+            "run_overload": {
+                text: [
+                    "你将能量全部输送到腿部液压系统，像一道闪电般冲出了巷道。",
+                    "子弹在你身后击碎了混凝土墙，但你已经混入了主街的人流中。",
+                    "过载让你的肌肉酸痛不已，但至少你活下来了。"
+                ],
+                choices: [
+                    { text: "寻找藏身处", next: "bar_silent" }
+                ]
+            },
+            "leave_quietly": {
+                text: [
+                    "你压低身形，利用全息投影广告的阴影作为掩护。",
+                    "无人机从你头顶掠过，扫描光束只差几厘米就扫到了你的义肢。",
+                    "你安全地到达了主干道，融入了熙熙攘攘的赛博格人群中。"
+                ],
+                choices: [
+                    { text: "前往黑客酒吧『静默』", next: "bar_silent" },
+                    { text: "寻找『老维』的黑诊所", next: "clinic" }
+                ]
+            },
+            "main_street": {
+                text: [
+                    "第4区的主街永远是这么喧闹。巨大的艺妓全息影像对着路人抛媚眼，空气中弥漫着合成拉面和机油的味道。",
+                    "这里鱼龙混杂，是摆脱追踪的好地方。",
+                    "你需要决定下一步去哪。你的身体状况并不理想，而那块数据盘像烙铁一样烫。"
+                ],
+                location: "新九州 / 第4区 / 主街",
+                choices: [
+                    { text: "去酒吧找情报贩子", next: "bar_silent" },
+                    { text: "去诊所修理身体", next: "clinic" }
+                ]
+            },
+            "underground": {
+                text: [
+                    "你顺着废弃的地铁管道下行，空气变得浑浊潮湿。",
+                    "这里是无码区，连公司的手都伸不进来的地方。",
+                    "几个改装过度的『裂颅帮』成员正在盯着你，但看到你的军用义肢后，他们犹豫了。"
+                ],
+                location: "新九州 / 地下废墟",
+                choices: [
+                    { text: "前往黑市", next: "black_market" },
+                    { text: "寻找地下的出口", next: "clinic" } // Connects back for flow
+                ]
+            },
+            "black_market": {
+                text: [
+                    "黑市里摆满了各种违禁品：未注册的器官、黑客芯片、甚至是旧时代的火药武器。",
+                    "一个带着多目面具的商人向你招手。"
+                ],
+                choices: [
+                    { text: "购买兴奋剂 (HP+40)", next: "buy_stim", effect: "hp+40", type: "special" },
+                    { text: "询问关于『零号协议』的消息", next: "ask_info", effect: "san-10" }
+                ]
+            },
+            "buy_stim": {
+                text: ["你用身上仅剩的信用点买了一支军用兴奋剂，直接扎入颈动脉。", "视野变得血红，但疼痛消失了。"],
+                choices: [{text: "离开黑市", next: "bar_silent"}]
+            },
+            "ask_info": {
+                text: ["商人听到了那个名字，脸色大变。", "“别在这提那个名字！你想害死我们吗？”", "他把你赶了出去，但塞给你一张纸条：“去『静默』酒吧找瑞文。”"],
+                choices: [{text: "前往酒吧", next: "bar_silent", setFlag: "knows_raven"}]
+            },
+            "bar_silent": {
+                text: [
+                    "推开厚重的隔音门，嘈杂的电子音乐扑面而来。",
+                    "『静默』酒吧并不安静。舞池里扭动着各种改装过的人体。",
+                    "吧台后面，一个全息投影酒保正在擦拭杯子。",
+                    "角落里坐着一个戴着兜帽的人，那是『瑞文』，第4区最好的解密专家。"
+                ],
+                location: "第4区 / 静默酒吧",
+                choices: [
+                    { text: "与瑞文交谈", next: "talk_raven" },
+                    { text: "在吧台点一杯『神经阻断剂』", next: "drink_bar", effect: "san+20" }
+                ]
+            },
+            "drink_bar": {
+                text: ["蓝色的液体顺喉而下，你的焦虑感减轻了，但思维也变得迟缓。"],
+                choices: [{text: "去找瑞文", next: "talk_raven"}]
+            },
+            "talk_raven": {
+                text: [
+                    "瑞文抬起头，露出一双义眼：“我闻到了麻烦的味道，还有值钱的数据味。”",
+                    "你拿出了数据盘。",
+                    "瑞文：“这就是传说中的『零号协议』？如果我解开它，整个新九州的防火墙都会崩溃。你确定要这么做？”"
+                ],
+                choices: [
+                    { text: "把盘给他解密", next: "decrypt_choice" },
+                    { text: "这太危险了，我需要更多准备", next: "leave_bar" }
+                ]
+            },
+            "decrypt_choice": {
+                text: [
+                    "瑞文接过数据盘，手指接入终端。几分钟后，他的表情凝固了。",
+                    "“这...这不是病毒，也不是武器蓝图。”",
+                    "“这是一份记忆备份。主角是你。”",
+                    "“你是世界树公司的原型机，零号。你不是人类。”"
+                ],
+                choices: [
+                    { text: "难以置信 (SAN崩坏)", next: "ending_insanity", effect: "san-100", type: "danger" },
+                    { text: "接受真相并觉醒", next: "ending_awakening", req: { stat: "san", val: 50 }, type: "special" },
+                    { text: "否认现实，摧毁数据盘", next: "ending_denial" }
+                ]
+            },
+            "clinic": {
+                text: [
+                    "黑诊所里弥漫着消毒水和腐烂血肉的味道。",
+                    "老维医生一边抽着合成烟草，一边看着你。",
+                    "“看起来你经历了一场恶战。我有办法修好你，但我想要那个数据盘作为报酬。”"
+                ],
+                location: "第4区 / 黑诊所",
+                choices: [
+                    { text: "同意交易 (失去数据盘)", next: "ending_survival", effect: "hp+100" },
+                    { text: "拒绝，武力威胁他治疗", next: "threaten_doc", req: { item: "EMP手雷" } },
+                    { text: "离开诊所", next: "main_street" }
+                ]
+            },
+            "threaten_doc": {
+                text: [
+                    "你拿出了EMP手雷，老维的脸色变了。",
+                    "“好吧，疯子。坐下，我给你治疗。”",
+                    "他在恐惧中为你修复了伤口。"
+                ],
+                choices: [{text: "身体恢复，前往公司复仇", next: "assault_corp", effect: "hp+50"}]
+            },
+            "assault_corp": {
+                text: [
+                    "你来到了世界树公司的大楼下。",
+                    "既然知道了这是一场阴谋，唯一的出路就是杀上去。",
+                    "你握紧了拳头，义肢轰鸣。"
+                ],
+                choices: [
+                    { text: "如果拥有密钥，潜入系统", next: "ending_ascension", req: { item: "世界树后门密钥" }, type: "special" },
+                    { text: "正面突击", next: "ending_cyberpsycho", type: "danger" }
+                ]
+            },
+            // ENDINGS
+            "ending_insanity": {
+                text: [
+                    "“我是... 机器？”",
+                    "逻辑回路过载。现实与虚幻的界限崩塌。",
+                    "你开始大笑，然后在大街上疯狂地攻击看到的每一个影子。",
+                    "最后，暴恐机动队终结了你的痛苦。",
+                    "【结局：赛博精神病】"
+                ],
+                choices: [{ text: "重启系统", next: "restart" }]
+            },
+            "ending_denial": {
+                text: [
+                    "你一把夺过数据盘，将它捏得粉碎。",
+                    "“我是人类。我有痛觉，我有记忆。”",
+                    "你离开了酒吧，消失在雨夜中，继续做一个底层的雇佣兵。",
+                    "真相被永远掩埋。",
+                    "【结局：缸中之脑的迷梦】"
+                ],
+                choices: [{ text: "重启系统", next: "restart" }]
+            },
+            "ending_survival": {
+                text: [
+                    "你交出了数据盘。老维修好了你的身体。",
+                    "没有了那些麻烦的数据，你感到前所未有的轻松。",
+                    "你活下来了，但也失去了寻找自我的机会。",
+                    "【结局：苟活】"
+                ],
+                choices: [{ text: "重启系统", next: "restart" }]
+            },
+            "ending_awakening": {
+                text: [
+                    "你看着自己的双手，接受了这个事实。",
+                    "既然是机器，那就意味着没有极限。",
+                    "你解除了大脑的安全限制器。",
+                    "你不再是第4区的一个混混，你是网络的神。",
+                    "你转身离开，准备接管这个城市。",
+                    "【结局：机械降神】"
+                ],
+                choices: [{ text: "重启系统", next: "restart" }]
+            },
+            "ending_cyberpsycho": {
+                text: [
+                    "你杀穿了一楼大厅，但面对公司精锐的机甲部队，你的血肉之躯终究到了极限。",
+                    "在最后的时刻，你引爆了体内的核心。",
+                    "巨大的爆炸吞噬了一切。",
+                    "【结局：壮烈的烟火】"
+                ],
+                choices: [{ text: "重启系统", next: "restart" }]
+            },
+            "ending_ascension": {
+                text: [
+                    "利用后门密钥，你避开了物理防御，直接接入了公司的主机。",
+                    "你将自己的意识上传到了云端。",
+                    "肉体倒在椅子上，但你的精神已经遍布网络的每一个角落。",
+                    "你看着底下渺小的人类，成为了新的监管者。",
+                    "【真结局：数字永生】"
+                ],
+                choices: [{ text: "重启系统", next: "restart" }]
+            },
+            "generic_end": {
+                text: [
+                    "信号丢失...",
+                    "你的故事在这里戛然而止。",
+                ],
+                choices: [
+                    { text: "系统重启", next: "start" }
+                ]
+            }
+        };
+
+        const handler = {
+            get: (target, name) => target[name] || {
+                text: ["数据扇区损坏...", "无法读取该节点的记忆。"],
+                choices: [{ text: "返回起点", next: "start" }]
+            }
+        };
+        const safeStory = new Proxy(story, handler);
+
+        /**
+         * UI ENGINE
+         */
+        const ui = {
+            log: document.getElementById('story-log'),
+            choices: document.getElementById('choices-container'),
+            hpVal: document.getElementById('hp-val'),
+            hpBar: document.getElementById('hp-bar'),
+            sanVal: document.getElementById('san-val'),
+            sanBar: document.getElementById('san-bar'),
+            invList: document.getElementById('inventory-list'),
+            locText: document.getElementById('location-text'),
+            anchor: document.getElementById('scroll-anchor'),
+
+            updateStats: () => {
+                ui.hpVal.innerText = `${gameState.hp}%`;
+                ui.hpBar.style.width = `${gameState.hp}%`;
+                ui.hpBar.className = `h-full stat-bar-fill ${gameState.hp < 30 ? 'bg-red-600 shadow-[0_0_10px_#ff0000]' : 'bg-pink-500 shadow-[0_0_8px_#ff00ff]'}`;
+
+                ui.sanVal.innerText = `${gameState.san}%`;
+                ui.sanBar.style.width = `${gameState.san}%`;
+                
+                // Low stat visual glitch effects
+                if (gameState.san < 30) {
+                    document.body.style.filter = "hue-rotate(90deg) contrast(1.2)";
+                } else {
+                    document.body.style.filter = "none";
+                }
+            },
+
+            updateInventory: () => {
+                ui.invList.innerHTML = '';
+                if (gameState.inventory.length === 0) {
+                    ui.invList.innerHTML = '<li class="italic opacity-50 pl-2">-- 空 --</li>';
+                    return;
+                }
+                gameState.inventory.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = "inventory-item text-cyan-100";
+                    li.innerText = item;
+                    ui.invList.appendChild(li);
+                });
+            },
+
+            addLogEntry: (text, isSystem = false) => {
+                const p = document.createElement('div');
+                p.className = isSystem 
+                    ? "text-xs text-green-400 font-mono mb-2 border-l-2 border-green-500 pl-2 opacity-90 tracking-wide" 
+                    : "mb-4 leading-relaxed text-gray-100 text-base md:text-lg shadow-black drop-shadow-md font-light";
+                
+                if(!isSystem) p.classList.add('cursor');
+                
+                ui.log.appendChild(p);
+                ui.scrollToBottom();
+                return p;
+            },
+
+            scrollToBottom: () => {
+                requestAnimationFrame(() => {
+                    ui.anchor.scrollIntoView({ behavior: "smooth", block: "end" });
+                });
+            },
+
+            clearChoices: () => {
+                ui.choices.innerHTML = '';
+            },
+
+            createButton: (choice) => {
+                const btn = document.createElement('button');
+                let baseClass = `cyber-btn p-4 w-full text-left md:text-center font-bold text-sm md:text-base group`;
+                if (choice.type === 'danger') baseClass += ' danger';
+                if (choice.type === 'special') baseClass += ' special';
+                
+                btn.className = baseClass;
+                
+                // Prepare Button Content
+                let btnContent = `<span>${choice.text}</span>`;
+                if (choice.loot) {
+                    btnContent += `<span class="text-xs ml-2 text-yellow-300 border border-yellow-300 px-1 rounded">[获: ${choice.loot}]</span>`;
+                }
+                btnContent += `<span class="float-right md:float-none md:ml-2 opacity-50 group-hover:translate-x-1 transition-transform">&gt;&gt;</span>`;
+                
+                btn.innerHTML = btnContent;
+                
+                // Logic Check
+                let locked = false;
+                let lockMsg = "";
+
+                // Check Stat Requirement
+                if (choice.req && choice.req.stat) {
+                    const val = gameState[choice.req.stat];
+                    if (val < choice.req.val) {
+                        locked = true;
+                        lockMsg = `${choice.req.stat.toUpperCase()} 需要 ${choice.req.val}`;
+                    }
+                }
+                
+                // Check Item Requirement
+                if (choice.req && choice.req.item) {
+                    if (!gameState.inventory.includes(choice.req.item)) {
+                        locked = true;
+                        lockMsg = `需要物品: [${choice.req.item}]`;
+                    }
+                }
+
+                if (locked) {
+                    btn.disabled = true;
+                    btn.innerHTML = `<div class="flex flex-col items-start md:items-center w-full"><span class="opacity-50 line-through">${choice.text}</span><span class="text-xs text-red-500 mt-1">🔒 ${lockMsg}</span></div>`;
+                } else {
+                    btn.addEventListener('mouseenter', SoundFX.hover);
+                    btn.addEventListener('click', () => {
+                        SoundFX.click();
+                        game.makeChoice(choice);
+                    });
+                }
+
+                ui.choices.appendChild(btn);
+            }
+        };
+
+        /**
+         * MAIN LOGIC
+         */
+        const game = {
+            isTyping: false,
+            typingSpeed: 25,
+
+            init: () => {
+                document.getElementById('start-btn').addEventListener('click', () => {
+                    SoundFX.click();
+                    game.start();
+                });
+                
+                bgAnimation.init();
+            },
+
+            start: () => {
+                gameState.hp = 100;
+                gameState.san = 100;
+                gameState.inventory = [];
+                gameState.flags = {};
+                ui.log.innerHTML = '';
+                ui.updateStats();
+                ui.updateInventory();
+                game.loadScene('start');
+            },
+
+            loadScene: async (sceneId) => {
+                if (sceneId === 'restart') {
+                    game.start();
+                    return;
+                }
+
+                gameState.currentScene = sceneId;
+                const scene = safeStory[sceneId];
+                
+                // Location Update Effect
+                if(scene.location) {
+                    ui.locText.innerText = scene.location;
+                    ui.locText.classList.remove('animate-pulse');
+                    void ui.locText.offsetWidth;
+                    ui.locText.classList.add('animate-pulse');
+                }
+
+                ui.clearChoices();
+
+                // Typing
+                for (let line of scene.text) {
+                    await game.typeText(line);
+                    await new Promise(r => setTimeout(r, 400));
+                }
+
+                // Render Choices
+                if (scene.choices) {
+                    scene.choices.forEach(ui.createButton);
+                } else {
+                    ui.createButton({ text: "系统连接中断... 重试", next: "start" });
+                }
+            },
+
+            typeText: (text) => {
+                return new Promise((resolve) => {
+                    // Check for system messages
+                    const isSystem = text.startsWith("系统") || text.startsWith("警告") || text.startsWith("获得") || text.startsWith("【");
+                    const p = ui.addLogEntry("", isSystem);
+                    
+                    if(isSystem && (text.includes("警告") || text.includes("失败"))) SoundFX.danger();
+                    
+                    let i = 0;
+                    game.isTyping = true;
+
+                    function type() {
+                        if (i < text.length) {
+                            p.textContent += text.charAt(i);
+                            i++;
+                            if (i % 2 === 0) SoundFX.typeChar(); 
+                            setTimeout(type, game.typingSpeed);
+                            ui.scrollToBottom();
+                        } else {
+                            game.isTyping = false;
+                            p.classList.remove('cursor');
+                            resolve();
+                        }
+                    }
+                    type();
+                });
+            },
+
+            makeChoice: (choice) => {
+                if (game.isTyping) return;
+
+                // 1. Stats Effect
+                if (choice.effect) {
+                    if (choice.effect.includes('hp+')) gameState.hp = Math.min(100, gameState.hp + parseInt(choice.effect.split('+')[1]));
+                    if (choice.effect.includes('hp-')) gameState.hp = Math.max(0, gameState.hp - parseInt(choice.effect.split('-')[1]));
+                    if (choice.effect.includes('san+')) gameState.san = Math.min(100, gameState.san + parseInt(choice.effect.split('+')[1]));
+                    if (choice.effect.includes('san-')) gameState.san = Math.max(0, gameState.san - parseInt(choice.effect.split('-')[1]));
+                    
+                    // Damage Effect
+                    if(choice.effect.includes('hp-') || choice.effect.includes('san-')) {
+                        SoundFX.glitch();
+                        document.body.style.animation = "glitch-anim-1 0.3s";
+                        setTimeout(() => document.body.style.animation = "", 300);
+                    }
+                    ui.updateStats();
+                }
+                
+                // 2. Loot Effect
+                if (choice.loot) {
+                    if (!gameState.inventory.includes(choice.loot)) {
+                        gameState.inventory.push(choice.loot);
+                        SoundFX.loot();
+                        ui.updateInventory();
+                        // Add a small log for item gain
+                        setTimeout(() => ui.addLogEntry(`系统提示：已将 [${choice.loot}] 添加到物品栏。`, true), 100);
+                    }
+                }
+
+                // 3. Flags
+                if (choice.setFlag) {
+                    gameState.flags[choice.setFlag] = true;
+                }
+
+                // 4. Log Choice
+                const choiceLog = document.createElement('div');
+                choiceLog.className = "text-right text-cyan-600 italic text-sm mb-4 border-r-2 border-cyan-800 pr-2 opacity-70";
+                choiceLog.innerText = `>> 选择: ${choice.text}`;
+                ui.log.appendChild(choiceLog);
+
+                // 5. Check Death
+                if (gameState.hp <= 0) {
+                     game.loadScene('generic_end'); // Or a specific death scene
+                     setTimeout(() => ui.addLogEntry("生命体征停止。系统强制离线。", true), 500);
+                     return;
+                }
+
+                game.loadScene(choice.next || 'generic_end');
+            }
+        };
+
+        /**
+         * BACKGROUND
+         */
+        const bgAnimation = {
+            init: () => {
+                const canvas = document.getElementById('canvas-bg');
+                const ctx = canvas.getContext('2d');
+                let width, height;
+
+                const resize = () => {
+                    width = canvas.width = window.innerWidth;
+                    height = canvas.height = window.innerHeight;
+                };
+                window.addEventListener('resize', resize);
+                resize();
+
+                let offset = 0;
+
+                function draw() {
+                    ctx.fillStyle = '#050505';
+                    ctx.fillRect(0, 0, width, height);
+
+                    const horizon = height * 0.45;
+                    
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)';
+                    ctx.lineWidth = 1;
+
+                    // Vertical
+                    for (let x = -width; x < width * 2; x += 60) {
+                        ctx.moveTo(x, height);
+                        const progress = (x - width/2) / (width);
+                        ctx.lineTo(width/2 + progress * 20, horizon);
+                    }
+
+                    // Horizontal
+                    offset = (offset + 0.2) % 40;
+                    for (let y = 0; y < height - horizon; y += 20) {
+                        let py = height - y + offset * (y/height * 2); 
+                        if (py > horizon) {
+                            ctx.moveTo(0, py);
+                            ctx.lineTo(width, py);
+                        }
+                    }
+                    ctx.stroke();
+                    
+                    // Sun / Moon / City Light
+                    const gradient = ctx.createRadialGradient(width/2, horizon, 10, width/2, horizon, 300);
+                    gradient.addColorStop(0, 'rgba(255, 0, 255, 0.2)');
+                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, width, height);
+
+                    requestAnimationFrame(draw);
+                }
+                draw();
+            }
+        };
+
+        window.onload = game.init;
+
+    </script>
+</body>
+</html>
